@@ -8,4 +8,7 @@ A small implementation of neuroevolution. A combination of genetic algorithms an
 
 ## Disclaimer
 
+
+**This project is still a work in progress**
+
 I tried using OpenAI gym's flappy bird, but I couldn't get it to work on Windows, so PLE was the best alternative (works on all major OSs).
