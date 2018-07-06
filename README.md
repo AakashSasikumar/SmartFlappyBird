@@ -1,6 +1,6 @@
 # Smart FlappyBird
 
-A small implementation of neuroevolution. A combination of genetic algorithms and neural networks would be used to find make a neural netowrk learn how to play flappy bird
+A small implementation of neuroevolution. A combination of genetic algorithms and neural networks would be used to find make a neural network learn how to play flappy bird
 
 ## Requirements
 1. python 3.6
