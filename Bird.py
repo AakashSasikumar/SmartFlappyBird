@@ -6,15 +6,21 @@ import time
 import pygame
 from pygame.locals import *
 from multiprocessing import Process, Value
+import NeuralNetwork as nn
 
 
 class FlappyBird():
 
     def __init__(self, index, FPS=30, SCREENWIDTH=288, SCREENHEIGHT=512, PIPEGAPSIZE=100):
+        self.brain = nn.NeuralNetwork(4, 5, 2)
         self.FPS = FPS
         self.index = index
         self.finalGameOver = Value('d', 0)
         self.finalScore = Value("d", 0)
+        self.nextPipeBottomY = Value('d', 0)
+        self.nextPipeTopY = Value('d', 0)
+        self.playerY = Value('d', 0)
+        self.nextPipeDistance = Value('d', 0)
         self.SCREENWIDTH = SCREENWIDTH
         self.SCREENHEIGHT = SCREENHEIGHT
         # amount by which base can maximum shift to left
@@ -63,10 +69,10 @@ class FlappyBird():
             self.xrange = range
 
     def init(self):
-        self.process = Process(target=self.main, args=(self.finalGameOver, self.finalScore))
+        self.process = Process(target=self.main, args=(self.finalGameOver, self.finalScore, self.nextPipeDistance, self.nextPipeTopY, self.nextPipeBottomY, self.playerY))
         self.process.start()
 
-    def main(self, gameStatus, finalScore):
+    def main(self, gameStatus, finalScore, nextPipeDistance, nextPipeTop, nextPipeBottom, playerY):
         global SCREEN, FPSCLOCK
         time.sleep(0.5)
         pygame.init()
@@ -158,10 +164,10 @@ class FlappyBird():
             'basex': self.basex,
             'playerIndexGen': self.playerIndexGen,
         }
-        crashInfo = self.mainGame(movementInfo)
+        crashInfo = self.mainGame(movementInfo, nextPipeDistance, nextPipeTop, nextPipeBottom, playerY)
         finalScore.value = crashInfo['score']
         gameStatus.value = 1.0
-        print(gameStatus.value)
+        # print(gameStatus.value)
         # FlappyBird.gameOver = True
         # FlappyBird.score = crashInfo['score']
         # self.showGameOverScreen(crashInfo)
@@ -226,7 +232,13 @@ class FlappyBird():
         #     FPSCLOCK.tick(self.FPS)
         #     pygame.display.update()
 
-    def mainGame(self, movementInfo):
+    def getGameState(self):
+        return {'playerY': self.playerY.value,
+                'nextPipeDistance': self.nextPipeDistance.value,
+                'nextPipeTopY': self.nextPipeBottomY.value - self.PIPEGAPSIZE,
+                'nextPipeBottomY': self.nextPipeBottomY.value}
+
+    def mainGame(self, movementInfo, nextPipeDist, nextPipeTop, nextPipeBottom, playerY):
         self.score = playerIndex = loopIter = 0
         playerIndexGen = movementInfo['playerIndexGen']
         playerx, playery = int(self.SCREENWIDTH * 0.2), movementInfo['playery']
@@ -265,20 +277,45 @@ class FlappyBird():
         playerRotThr = 20   # rotation threshold
         playerFlapAcc = -9   # players speed on flapping
         playerFlapped = False  # True when player flaps
-
+        
         while True:
+            playerY.value = playery
+            if upperPipes[0]['x'] - 88 < 0:
+                nextPipeDist.value = upperPipes[1]['x'] - 88
+                nextPipeTop.value = newPipe2[2]['gapY'] - self.PIPEGAPSIZE / 2
+                nextPipeBottom.value = lowerPipes[1]['y']
+                # print(upperPipes[1]['x'] - 88)
+            else:
+                nextPipeDist.value = upperPipes[0]['x'] - 88
+                nextPipeTop.value = newPipe1[2]['gapY'] - self.PIPEGAPSIZE / 2
+                nextPipeBottom.value = lowerPipes[0]['y']
+            gameStatus = [playery, nextPipeDist.value, nextPipeTop.value, nextPipeBottom.value]
+            
+            prediction = self.brain.predict(gameStatus)
+            if playery < 0:
+                return {'score': 0}
+            
+            if prediction[0] > prediction[1]:
+                if playery > -2 * self.IMAGES['player'][0].get_height():
+                    playerVelY = playerFlapAcc
+                    playerFlapped = True
+
             for event in pygame.event.get():
                 if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                     pygame.quit()
                     sys.exit()
-                if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
-                    if playery > -2 * self.IMAGES['player'][0].get_height():
-                        playerVelY = playerFlapAcc
-                        playerFlapped = True
-                        # SOUNDS['wing'].play()
+                # if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
+                #     if playery > -2 * self.IMAGES['player'][0].get_height():
+                #         print("flapping")
+                #         playerVelY = playerFlapAcc
+                #         playerFlapped = True
+                # if prediction[0] > prediction[1]:
+                #     if playery > -2 * self.IMAGES['player'][0].get_height():
+                #         print("flapping")
+                #         playerVelY = playerFlapAcc
+                #         playerFlapped = True
 
-            # check for crash here
-            # print("loll")
+            # check for crash here            
             crashTest = self.checkCrash({'x': playerx, 'y': playery, 'index': playerIndex},
                                         upperPipes, lowerPipes)
             if crashTest[0]:
@@ -386,6 +423,7 @@ class FlappyBird():
         return [
             {'x': pipeX, 'y': gapY - pipeHeight},  # upper pipe
             {'x': pipeX, 'y': gapY + self.PIPEGAPSIZE},  # lower pipe
+            {'gapY': gapY, "pipeHeight": pipeHeight},
         ]
 
     def showScore(self, score):
