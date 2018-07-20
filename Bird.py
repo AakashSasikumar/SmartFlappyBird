@@ -2,6 +2,7 @@ from itertools import cycle
 import random
 import sys
 import time
+import numpy as np
 
 import pygame
 from pygame.locals import *
@@ -11,10 +12,11 @@ import NeuralNetwork as nn
 
 class FlappyBird():
 
-    def __init__(self, index, FPS=30, SCREENWIDTH=288, SCREENHEIGHT=512, PIPEGAPSIZE=100):
-        self.brain = nn.NeuralNetwork(4, 5, 2)
+    def __init__(self, index, brain=nn.NeuralNetwork(4, 5, 2), FPS=30, SCREENWIDTH=288, SCREENHEIGHT=512, PIPEGAPSIZE=100):
+        self.brain = brain
         self.FPS = FPS
         self.index = index
+        self.fitness = 0
         self.finalGameOver = Value('d', 0)
         self.finalScore = Value("d", 0)
         self.nextPipeBottomY = Value('d', 0)
@@ -165,7 +167,7 @@ class FlappyBird():
             'playerIndexGen': self.playerIndexGen,
         }
         crashInfo = self.mainGame(movementInfo, nextPipeDistance, nextPipeTop, nextPipeBottom, playerY)
-        finalScore.value = crashInfo['score']
+        finalScore.value = self.finalScore.value + crashInfo['score'] * 10
         gameStatus.value = 1.0
         # print(gameStatus.value)
         # FlappyBird.gameOver = True
@@ -232,11 +234,31 @@ class FlappyBird():
         #     FPSCLOCK.tick(self.FPS)
         #     pygame.display.update()
 
+    def mutate(self, rate):
+        self.brain.hiddenBias = self.normalRandom(self.brain.hiddenBias, rate)
+        self.brain.inputHiddenWeights = self.normalRandom(self.brain.inputHiddenWeights, rate)
+        self.brain.hiddenOutputWeights = self.normalRandom(self.brain.hiddenOutputWeights, rate)
+        self.brain.outputBias = self.normalRandom(self.brain.outputBias, rate)
+        print(self.brain.inputHiddenWeights)
+        return self.brain
+        
+    def normalRandom(self, weights, rate):
+        for i in range(len(weights)):
+            if np.random.rand() < rate:
+                print("prev", weights[i])
+                weights[i] += np.random.normal(0, 0.1, 1)[0]
+                print("new", weights[i])
+                
+        return weights
+
     def getGameState(self):
         return {'playerY': self.playerY.value,
                 'nextPipeDistance': self.nextPipeDistance.value,
                 'nextPipeTopY': self.nextPipeBottomY.value - self.PIPEGAPSIZE,
                 'nextPipeBottomY': self.nextPipeBottomY.value}
+
+    def getScore(self):
+        return self.finalScore.value
 
     def mainGame(self, movementInfo, nextPipeDist, nextPipeTop, nextPipeBottom, playerY):
         self.score = playerIndex = loopIter = 0
@@ -299,7 +321,7 @@ class FlappyBird():
                 if playery > -2 * self.IMAGES['player'][0].get_height():
                     playerVelY = playerFlapAcc
                     playerFlapped = True
-
+            self.finalScore.value += 1
             for event in pygame.event.get():
                 if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                     pygame.quit()
