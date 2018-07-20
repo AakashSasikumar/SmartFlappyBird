@@ -6,6 +6,14 @@ A small implementation of neuroevolution. A combination of genetic algorithms an
 1. python 3.6
 2. ple
 
+
+## Note
+- I decided to use multiprocessing to create multiple flappy birds (I wanted to learn multiprocessing in python)
+- I realized that the pygame is getting created and stopped completely each time a bird dies and is spawned again
+- This project will work completely fine, but the population size might have to be a bit low and the time taken to train (reach super human levels) might take a long time
+
+## TODO
+- Change the spawning process such that the game window isn't closed completely each time, and that the same window is reused
 ## Disclaimer
 
 

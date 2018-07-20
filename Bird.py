@@ -12,7 +12,7 @@ import NeuralNetwork as nn
 
 class FlappyBird():
 
-    def __init__(self, index, brain=nn.NeuralNetwork(4, 5, 2), FPS=30, SCREENWIDTH=288, SCREENHEIGHT=512, PIPEGAPSIZE=100):
+    def __init__(self, index, brain=nn.NeuralNetwork(4, 5, 2), FPS=240, SCREENWIDTH=288, SCREENHEIGHT=512, PIPEGAPSIZE=100):
         self.brain = brain
         self.FPS = FPS
         self.index = index
@@ -239,16 +239,18 @@ class FlappyBird():
         self.brain.inputHiddenWeights = self.normalRandom(self.brain.inputHiddenWeights, rate)
         self.brain.hiddenOutputWeights = self.normalRandom(self.brain.hiddenOutputWeights, rate)
         self.brain.outputBias = self.normalRandom(self.brain.outputBias, rate)
-        print(self.brain.inputHiddenWeights)
+        # print(self.brain.inputHiddenWeights)
         return self.brain
         
     def normalRandom(self, weights, rate):
+        print('Prev', weights)
+        
         for i in range(len(weights)):
             if np.random.rand() < rate:
-                print("prev", weights[i])
+                # print("prev", weights[i])
                 weights[i] += np.random.normal(0, 0.1, 1)[0]
-                print("new", weights[i])
-                
+                # print("new", weights[i])
+        print("after", weights)
         return weights
 
     def getGameState(self):
